@@ -1,0 +1,45 @@
+{
+  "name": "dsh-glass-effect",
+  "version": "0.2.0",
+  "description": "玻璃效果的界面外观：输入框、弹窗、菜单、卡片与代码块共用同一层半透明玻璃材质。开关在 设置 → 通用 → 外观（Settings → General → Appearance）。",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "theme",
+    "glass",
+    "glassmorphism",
+    "appearance"
+  ],
+  "author": "Milkyway_n_Falls",
+  "type": "module",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "assets"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-primitives"
+      ]
+    }
+  }
+}

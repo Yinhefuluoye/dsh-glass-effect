@@ -1,0 +1,5 @@
+# Adds exactly one loader row for this plugin.
+# Nothing official is replaced, disabled, or reconfigured.
+- insert:
+    - id: glass-effect
+      name: dsh-glass-effect

@@ -1,0 +1,13 @@
+# Dependencies (this package has none; present only if someone installs here)
+node_modules/
+
+# Logs and editor / OS noise
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local scratch
+*.local

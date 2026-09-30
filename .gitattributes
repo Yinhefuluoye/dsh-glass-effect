@@ -1,0 +1,4 @@
+# Keep one line-ending convention in the repository regardless of the platform
+# that clones it: this machine's git has core.autocrlf=true, which would
+# otherwise rewrite every file's line endings on the next checkout elsewhere.
+* text=auto eol=lf
