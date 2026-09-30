@@ -467,7 +467,7 @@ check('defaults: frosted glass + backdrop on + drawer on, all three attributes s
   assert.equal(calls.length, 1, 'expected one composed token layer')
   assert.equal(calls[0].source, pkg.name)
   const keys = tokenKeys()
-  assert.equal(keys.length, 12, `expected 11 material tokens + the mask blur, got ${keys.join(', ')}`)
+  assert.equal(keys.length, 10, `expected 9 material tokens + the mask blur, got ${keys.join(', ')}`)
   for (const name of keys) {
     const pair = lastTokens()[name]
     assert.equal(typeof pair?.light, 'string', `${name} needs a light value`)
@@ -569,7 +569,7 @@ check('the drawer clears itself when collapsed, and fades instead of popping', (
 
 check('every material fill is translucent in both schemes', () => {
   const fills = Object.entries(lastTokens()).filter(([, pair]) => pair.light.startsWith('rgba('))
-  assert.equal(fills.length, 11, `expected 11 colour tokens beside the mask blur, got ${fills.length}`)
+  assert.equal(fills.length, 9, `expected 9 colour tokens beside the mask blur, got ${fills.length}`)
   for (const [name, pair] of fills) {
     for (const mode of ['light', 'dark']) {
       const alpha = Number(pair[mode].slice(5, -1).split(',')[3])
@@ -595,8 +595,6 @@ check('light glass stays glass: the surfaces that must stay see-through', () => 
   const CONTENT = [
     '--dsw-alias-markdown-code-block',
     '--dsw-alias-markdown-code-block-banner',
-    '--dsw-specific-menu',
-    '--dsw-menu-surface-fill',
   ]
   for (const [name, pair] of Object.entries(lastTokens())) {
     if (!pair.light.startsWith('rgba(')) continue
@@ -667,29 +665,22 @@ check('tool output blocks get a solid floor, without wiping the diff colours', (
     'never pin [data-diff-line]: !important there would wipe the added/removed colours')
 })
 
-check('overlays are readable: menus get the app own macOS opacity', () => {
-  // The stock Windows/Linux menu is `--dsw-menu-surface-fill` = 0.58 / 0.45 under
-  // a blur(40px) on an inner `.material` layer, which both the composer's `+`
-  // command menu and the `/` menu read as "very transparent". The app itself
-  // forces 0.94 on macOS (design-platform.css, because overlays over native
-  // vibrancy cannot blur reliably), so the plugin adopts exactly those values
-  // for every platform.
-  //
-  // BOTH names are required: MenuSurface paints with the RAW token
-  // (`background: var(--dsw-menu-surface-fill)` in MenuSurface.module.css),
-  // while `--dsw-specific-menu` is only its alias, consumed by the other
-  // overlays. Setting the alias alone left every MenuSurface popup — the `+`
-  // menu, its submenus, the model picker — at the stock value, which is exactly
-  // why an earlier attempt showed no effect there.
+check('the app own overlay recipe is never overridden', () => {
+  // History this check exists to prevent: the composer's menus were reported as
+  // "very transparent". The cause was this plugin's refraction rule putting a
+  // backdrop-filter on the role="menu" element itself, which created an ancestor
+  // backdrop root and cancelled MenuSurface's inner blur. The rule was fixed.
+  // The follow-up "fix" was worse than the bug: raising `--dsw-menu-surface-fill`
+  // (and its alias `--dsw-specific-menu`) to 0.94 and then 0.98 turned every menu
+  // into a flat plate, so the user saw the switch INVERTED — glass on looked
+  // plain, glass off looked glassy. The menu fill IS the glass; its readability
+  // comes from the app's blur(40px), not from opacity.
   for (const name of ['--dsw-specific-menu', '--dsw-menu-surface-fill']) {
-    for (const mode of ['light', 'dark']) {
-      const alpha = Number(lastTokens()[name][mode].slice(5, -1).split(',')[3])
-      assert.ok(alpha >= 0.9, `${name} (${mode}) must stay readable, got ${alpha}`)
-      assert.ok(alpha < 1, `${name} (${mode}) should keep a hint of glass, got ${alpha}`)
-    }
-    assert.equal(lastTokens()[name].light, 'rgba(248, 249, 250, 0.98)')
-    assert.equal(lastTokens()[name].dark, 'rgba(48, 49, 54, 0.98)')
+    assert.ok(!(name in lastTokens()),
+      `${name} must keep the app's own value: the menu fill is the glass, do not raise it`)
   }
+  // The companion check above ("the plugin never weakens a floating surface own
+  // blur") covers the other half: menus must not receive the plugin's blur.
 })
 
 check('the dark top highlight stays a hairline, not a light bar', () => {
@@ -727,7 +718,7 @@ check('a stored backdrop of 0 drops the material tokens', () => {
   assert.deepEqual(tokenKeys(), ['--dsw-mask-blur'], 'only the mask blur survives with the backdrop off')
   reconfigure({ 'dsh-glass-effect-backdrop': 1 })
   assert.equal(bodyAttrs.get('data-lg-backdrop'), '1')
-  assert.equal(tokenKeys().length, 12, 'the material tokens return with the backdrop')
+  assert.equal(tokenKeys().length, 10, 'the material tokens return with the backdrop')
 })
 
 check('each stored glass level paints its own contract', () => {
@@ -735,7 +726,7 @@ check('each stored glass level paints its own contract', () => {
   for (const level of [0, 1, 2, 3]) {
     reconfigure({ 'dsh-glass-effect-level': level, 'dsh-glass-effect-backdrop': 1 })
     assert.equal(bodyAttrs.get('data-lg-level'), String(level))
-    const expected = level >= 2 ? 12 : 11
+    const expected = level >= 2 ? 10 : 9
     assert.equal(tokenKeys().length, expected,
       `level ${level}: mask blur only belongs to level 2 and above`)
   }
