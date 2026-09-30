@@ -1,0 +1,14 @@
+dsh-glass-effect
+Copyright (c) 2026 Milkyway_n_Falls
+
+Third-party notices
+===================
+
+Portions of the glass treatment in `lib/client.js` are derived from
+dsh-liquid-glass by 394804078-pixel
+(https://github.com/394804078-pixel/dsh-liquid-glass),
+Copyright (c) 2025 dsh-liquid-glass contributors, also MIT licensed.
+
+This notice lives outside LICENSE on purpose: GitHub detects the MIT license
+only from the canonical license text, and an extra paragraph inside LICENSE
+makes the repository page report "NOASSERTION" instead of "MIT".
