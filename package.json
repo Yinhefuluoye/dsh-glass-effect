@@ -1,6 +1,6 @@
 {
   "name": "dsh-glass-effect",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "玻璃效果的界面外观：输入框、弹窗、菜单、卡片与代码块共用同一层半透明玻璃材质。开关在 设置 → 通用 → 外观（Settings → General → Appearance）。",
   "keywords": [
     "dsh",
