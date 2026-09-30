@@ -350,15 +350,32 @@ check('exactly one stylesheet is injected, tagged with the plugin identity', () 
   assert.ok(css.length > 1000, 'the stylesheet looks empty')
 })
 
-/** Every surface selector this plugin claims to reach. */
+/** Every surface selector this plugin claims to reach. Menus and listboxes are
+ *  NOT here on purpose: the plugin no longer styles them at all (their elevation,
+ *  stroke and radius stay the app's), and roles are not element-shaped — the
+ *  listbox role sits on the composer menu's inner viewport, which has no
+ *  border-radius, so an inset stroke there drew a thin square rectangle. */
 const SURFACE_HOOKS = [
-  '[data-composer-card]', '[role="dialog"]', '[role="menu"]', '[role="listbox"]',
+  '[data-composer-card]', '[role="dialog"]',
   '[role="presentation"]', '.md-code-block', '[data-testid="todo-panel"]',
   '[data-presented-file]', '[data-sidebar-right-panel',
 ]
 
 check('every surface hook is present in the stylesheet', () => {
   for (const hook of SURFACE_HOOKS) assert.ok(code.includes(hook), `stylesheet never mentions ${hook}`)
+})
+
+check('no role-based rule paints a menu', () => {
+  // A menu must look exactly like the app's own. Only the scoped fill on
+  // [data-trigger-menu] may differ; nothing may add a stroke, a shadow or a
+  // fill keyed on a role, because the role can land on an unrounded inner box.
+  // Comments are stripped first: this file's own comments name those roles.
+  const bare = code.replace(/\/\*[\s\S]*?\*\//g, '')
+  for (const chunk of bare.split('}')) {
+    const selector = chunk.split('{')[0] ?? ''
+    if (!/\[role="(menu|listbox)"\]/.test(selector)) continue
+    assert.fail(`a rule selects a menu by role: ${selector.trim().slice(0, 120)}`)
+  }
 })
 
 check('every application rule is gated on one of the plugin attributes', () => {
@@ -665,22 +682,42 @@ check('tool output blocks get a solid floor, without wiping the diff colours', (
     'never pin [data-diff-line]: !important there would wipe the added/removed colours')
 })
 
-check('the app own overlay recipe is never overridden', () => {
-  // History this check exists to prevent: the composer's menus were reported as
-  // "very transparent". The cause was this plugin's refraction rule putting a
-  // backdrop-filter on the role="menu" element itself, which created an ancestor
-  // backdrop root and cancelled MenuSurface's inner blur. The rule was fixed.
-  // The follow-up "fix" was worse than the bug: raising `--dsw-menu-surface-fill`
-  // (and its alias `--dsw-specific-menu`) to 0.94 and then 0.98 turned every menu
-  // into a flat plate, so the user saw the switch INVERTED — glass on looked
-  // plain, glass off looked glassy. The menu fill IS the glass; its readability
-  // comes from the app's blur(40px), not from opacity.
-  for (const name of ['--dsw-specific-menu', '--dsw-menu-surface-fill']) {
-    assert.ok(!(name in lastTokens()),
-      `${name} must keep the app's own value: the menu fill is the glass, do not raise it`)
+check('the overlay fill stays inside the glass band, at both ends', () => {
+  // THE GLOBAL MENU FILL STAYS THE APP'S. Three rounds bracket this rule:
+  //
+  // - Stock (0.58 / 0.45) is tuned for an opaque ground. It is right for every
+  //   ordinary popup — the sidebar account menu over the almost-opaque sidebar
+  //   fill was reported as looking correct — but too see-through for the
+  //   composer's slash and plus menus, which float over the conversation column
+  //   this plugin makes translucent.
+  // - Raising the SHARED token to 0.94/0.98 fixed those two and broke every
+  //   other menu: the user reported the switch as INVERTED (glass on looked
+  //   plain, glass off looked glassy), because the menu fill IS the glass.
+  // - So the raise is scoped instead: one element-level override on
+  //   `[data-trigger-menu]` (the app's own hook on the composer's MenuSurface),
+  //   which reaches only that subtree. Verified below.
+  assert.ok(!('--dsw-menu-surface-fill' in lastTokens()),
+    'the shared menu fill must keep the app value; only the scoped rule may raise it')
+  assert.ok(!('--dsw-specific-menu' in lastTokens()),
+    'the alias must not be set either: it is var(--dsw-menu-surface-fill) and follows it')
+  // The scoped rule: element-level custom property, gated like every other
+  // application rule, on the hook and nothing else.
+  const scoped = code.split('}').find(chunk => chunk.includes('[data-trigger-menu]'))
+  assert.ok(scoped, 'the scoped trigger-menu rule is missing')
+  assert.ok(scoped.includes('--dsw-menu-surface-fill: var(--lg-trigger-menu)'),
+    'the scoped rule must set the app token from the plugin variable')
+  assert.ok(/body\[data-lg-level\]:not\(\[data-lg-level="0"\]\)/.test(scoped),
+    'the scoped rule must stay behind the glass gate')
+  assert.ok(!/\[role="menu"\]|\[role="listbox"\]/.test(scoped),
+    'the scoped rule must target the hook, not a role: roles would drag other menus in')
+  // And that variable stays near-opaque in both schemes: this surface is the one
+  // place where readability outranks glass, because the user asked for the
+  // pre-revert value here explicitly.
+  const trigger = code.split('--lg-trigger-menu:')[1]
+  assert.ok(trigger, 'the --lg-trigger-menu variable is missing')
+  for (const alpha of trigger.slice(0, 120).matchAll(/rgba\([^)]*?,\s*(0?\.\d+|1)\)/g)) {
+    assert.ok(Number(alpha[1]) >= 0.9, `the scoped fill must be near-opaque, got ${alpha[1]}`)
   }
-  // The companion check above ("the plugin never weakens a floating surface own
-  // blur") covers the other half: menus must not receive the plugin's blur.
 })
 
 check('the dark top highlight stays a hairline, not a light bar', () => {
