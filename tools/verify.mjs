@@ -650,9 +650,28 @@ check('the plugin never weakens a floating surface own blur', () => {
   assert.ok(!blur.includes('[role="menu"]'),
     'menus must keep the app own blur(40px); overriding it is what made the + menu see-through')
   assert.ok(!blur.includes('[role="listbox"]'), 'listboxes must keep the app own blur too')
-  for (const allow of ['[data-composer-card]', '[role="dialog"]']) {
-    assert.ok(blur.includes(allow), `the refraction rule should still cover ${allow}`)
+  assert.ok(blur.includes('[role="dialog"]'), 'the refraction rule should still cover dialogs')
+})
+
+check('the composer blur lives on a child layer, never on the card', () => {
+  // Symptom that forced this: hovering the composer's stop button made the whole
+  // picture flicker, and it stopped when the glass switch was off. The button
+  // transitions its background colour; with backdrop-filter on the CARD, that
+  // repaint re-rasterized the blur every frame. The blur now sits on ::after
+  // below the content — the same split the app itself uses for MenuSurface.
+  const bare = code.replace(/\/\*[\s\S]*?\*\//g, '')
+  for (const chunk of bare.split('}')) {
+    const selector = chunk.split('{')[0] ?? ''
+    const hasComposer = /\[data-composer-card\]/.test(selector)
+    const isChildLayer = /::(?:after|before)/.test(selector)
+    if (!hasComposer || isChildLayer) continue
+    if (!/backdrop-filter/.test(chunk)) continue
+    assert.fail(`the composer card itself must not carry backdrop-filter: ${selector.trim().slice(0, 120)}`)
   }
+  const layer = bare.split('}').find(chunk => chunk.includes('[data-composer-card]::after') && chunk.includes('backdrop-filter: var(--lg-blur)'))
+  assert.ok(layer, 'the composer blur must live on its own child layer (::after with backdrop-filter)')
+  assert.ok(layer.includes('z-index: -1'), 'that layer must paint below the content, so text and buttons stay sharp')
+  assert.ok(layer.includes('pointer-events: none'), 'that layer must not swallow clicks')
 })
 
 check('tool output blocks get a solid floor, without wiping the diff colours', () => {
